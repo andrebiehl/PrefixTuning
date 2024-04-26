@@ -87,7 +87,7 @@ def main(args):
     test_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
 
         # Preprocess dataset
-    tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path)
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     transform = Compose([
         Resize((224, 224)),
         ToTensor(),
