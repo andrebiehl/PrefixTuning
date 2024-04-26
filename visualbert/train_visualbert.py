@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from datasets import load_dataset
-from transformers import VisualBertModel, VisualBertProcessor, AdamW, get_linear_schedule_with_warmup
+from transformers import VisualBertModel, VisualBertConfig, VisualBertFeatureExtractor, BertTokenizer, AdamW, get_linear_schedule_with_warmup
 from PIL import Image
 
 from model import VisualBERTCaptionGenerator
@@ -34,7 +34,15 @@ def parse_args():
 def preprocess_function(examples):
     images = [Image.open(image_path).convert("RGB") for image_path, _ in examples]
     captions = [random.choice(captions) for _, captions in examples]
-    inputs = processor(images=images, text=captions, padding="max_length", truncation=True, return_tensors="pt")
+    
+    visual_features = feature_extractor(images, return_tensors="pt")
+    text_features = tokenizer(captions, padding="max_length", truncation=True, return_tensors="pt")
+    
+    inputs = {
+        "input_ids": text_features["input_ids"],
+        "attention_mask": text_features["attention_mask"],
+        "pixel_values": visual_features.pixel_values,
+    }
     inputs["labels"] = inputs["input_ids"].clone()
     return inputs
 
@@ -58,7 +66,8 @@ def main(args):
     test_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
 
     # Preprocess dataset
-    processor = VisualBertProcessor.from_pretrained(args.model_name_or_path)
+    tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path)
+    feature_extractor = VisualBertFeatureExtractor.from_pretrained(args.model_name_or_path)
     train_dataset = train_dataset.map(preprocess_function, batched=True, remove_columns=train_dataset.column_names)
     dev_dataset = dev_dataset.map(preprocess_function, batched=True, remove_columns=dev_dataset.column_names)
     test_dataset = test_dataset.map(preprocess_function, batched=True, remove_columns=test_dataset.column_names)
@@ -119,8 +128,8 @@ def main(args):
     output_dir = Path(args.output_dir)
     output_dir.mkdir(exist_ok=True)
     model.save_pretrained(output_dir)
-    config.save_pretrained(output_dir)
-    processor.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
+    feature_extractor.save_pretrained(output_dir)
 
 if __name__ == "__main__":
     args = parse_args()
