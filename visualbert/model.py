@@ -19,7 +19,7 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
             nn.ReLU(),
             nn.Linear(self.prefix_dim, self.prefix_length * 2 * self.config.num_hidden_layers * self.prefix_dim)
         )
-
+    
     def get_prompt(self, batch_size):
         prefix_embeddings = self.prefix_embeddings.unsqueeze(0).expand(batch_size, -1, -1)
         return self.prefix_proj(prefix_embeddings)
@@ -43,6 +43,12 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
     ):
         batch_size = input_ids.shape[0]
         prefix_embeddings = self.get_prompt(batch_size)
+
+        input_ids = input_ids.unsqueeze(0)
+        attention_mask = attention_mask.unsqueeze(0)
+        visual_embeds = visual_embeds.unsqueeze(0)
+        visual_attention_mask = visual_attention_mask.unsqueeze(0)
+        visual_token_type_ids = visual_token_type_ids.unsqueeze(0)
 
         outputs = self.visual_bert(
             input_ids,
