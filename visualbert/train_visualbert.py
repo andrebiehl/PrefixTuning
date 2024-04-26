@@ -50,7 +50,7 @@ def get_visual_embeddings(images, device):
     visual_embeds = torch.cat(visual_embeds, dim=0)
     return visual_embeds
 
-def preprocess_function(examples, tokenizer, transform, device):
+def preprocess_function(example, tokenizer, transform, device):
     image_path, captions_list = example  # Unpack the tuple into image_path and captions_list
     image = preprocess_image(image_path, transform)  # Process the image
     caption = random.choice(captions_list)  # Choose one of the captions at random
