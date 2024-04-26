@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from datasets import load_dataset
-from transformers import VisualBertForCausalLM, VisualBertProcessor, AdamW, get_linear_schedule_with_warmup
+from transformers import VisualBertModel, VisualBertProcessor, AdamW, get_linear_schedule_with_warmup
 from PIL import Image
 
 from model import VisualBERTCaptionGenerator
@@ -64,7 +64,9 @@ def main(args):
     test_dataset = test_dataset.map(preprocess_function, batched=True, remove_columns=test_dataset.column_names)
 
     # Load model
-    model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path)
+    config = VisualBertConfig.from_pretrained(args.model_name_or_path)
+    config.prefix_length = args.prefix_length
+    model = VisualBERTCaptionGenerator(config)
     model.prefix_length = args.prefix_length
     print("Model loaded and prefix length set.") 
 
@@ -117,6 +119,7 @@ def main(args):
     output_dir = Path(args.output_dir)
     output_dir.mkdir(exist_ok=True)
     model.save_pretrained(output_dir)
+    config.save_pretrained(output_dir)
     processor.save_pretrained(output_dir)
 
 if __name__ == "__main__":
