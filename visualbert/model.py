@@ -71,13 +71,4 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
             loss_fct = nn.CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, self.config.vocab_size), labels.view(-1))
 
-        if not return_dict:
-            output = (logits,) + outputs[2:]
-            return ((loss,) + output) if loss is not None else output
-
-        return torch.nn.functional.cross_entropy(
-            logits.view(-1, self.config.vocab_size),
-            labels.view(-1),
-            ignore_index=-100,
-            reduction='mean'
-        )
+        return {'loss': loss, 'logits': logits}
