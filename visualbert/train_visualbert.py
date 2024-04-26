@@ -90,9 +90,9 @@ def main(args):
                 captions[image_id] = []
             captions[image_id].append(caption)
 
-    train_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in train_image_ids]
-    dev_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in dev_image_ids]
-    test_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
+    train_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in train_image_ids]
+    dev_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in dev_image_ids]
+    test_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
 
         # Preprocess dataset
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
