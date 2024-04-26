@@ -44,6 +44,10 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         batch_size = input_ids.shape[0]
         prefix_embeddings = self.get_prompt(batch_size)
     
+        visual_embeds = visual_embeds.squeeze(1)
+        visual_attention_mask = visual_attention_mask.squeeze(1)
+        visual_token_type_ids = visual_token_type_ids.squeeze(1)
+    
         outputs = self.visual_bert(
             input_ids,
             attention_mask=attention_mask,
