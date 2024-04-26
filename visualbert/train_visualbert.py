@@ -31,6 +31,13 @@ def parse_args():
     return args
 
 def preprocess_image(image_path, transform):
+    try:
+        image = Image.open(image_path).convert("RGB")
+        image = transform(image)
+        return image
+    except Exception as e:
+        print(f"Error processing image: {image_path}")
+        raise e
     image = Image.open(image_path).convert("RGB")
     image = transform(image)
     return image
