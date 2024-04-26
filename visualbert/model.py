@@ -13,6 +13,7 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
 
     def initialize_prefix(self, prefix_length):
         self.prefix_length = prefix_length
+        self.prefix_embeddings = nn.Parameter(torch.zeros(prefix_length, self.prefix_dim))
         self.prefix_proj = nn.Sequential(
             nn.Linear(self.prefix_dim, self.prefix_dim),
             nn.ReLU(),
@@ -20,10 +21,8 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         )
 
     def get_prompt(self, batch_size):
-        prefix = torch.randn(batch_size, self.prefix_dim).to(self.device)
-        prefix = self.prefix_proj(prefix).view(batch_size, self.prefix_length, 2, 
-                                               self.config.num_hidden_layers, self.prefix_dim)
-        return prefix
+        prefix_embeddings = self.prefix_embeddings.unsqueeze(0).expand(batch_size, -1, -1)
+        return self.prefix_proj(prefix_embeddings)
 
     def forward(
         self,
@@ -42,10 +41,9 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         return_dict=None,
         labels=None,
     ):
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        
-        prefix = self.get_prompt(batch_size=input_ids.shape[0])
-        
+        batch_size = input_ids.shape[0]
+        prefix_embeddings = self.get_prompt(batch_size)
+
         outputs = self.visual_bert(
             input_ids,
             attention_mask=attention_mask,
@@ -60,10 +58,10 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
-            prefix=prefix,
         )
 
         sequence_output = outputs[0]
+        sequence_output = torch.cat((prefix_embeddings, sequence_output), dim=1)
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
 
