@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from transformers import VisualBertPreTrainedModel, VisualBertModel, VisualBertConfig
+from transformers import VisualBertPreTrainedModel, VisualBertModel
 
 class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
     def __init__(self, config):
@@ -31,19 +31,18 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         position_ids=None,
         head_mask=None,
         inputs_embeds=None,
-        encoder_hidden_states=None,
-        encoder_attention_mask=None,
-        labels=None,
-        use_cache=None,
+        visual_embeds=None,
+        visual_attention_mask=None,
+        visual_token_type_ids=None,
+        image_text_alignment=None,
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        pixel_values=None,
-        visual_attention_mask=None,
+        labels=None,
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         
-        prefix = self.get_prompt(batch_size=pixel_values.shape[0])
+        prefix = self.get_prompt(batch_size=input_ids.shape[0])
         
         outputs = self.visual_bert(
             input_ids,
@@ -52,13 +51,13 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
             position_ids=position_ids,
             head_mask=head_mask,
             inputs_embeds=inputs_embeds,
-            encoder_hidden_states=encoder_hidden_states,
-            encoder_attention_mask=encoder_attention_mask,
+            visual_embeds=visual_embeds,
+            visual_attention_mask=visual_attention_mask,
+            visual_token_type_ids=visual_token_type_ids,
+            image_text_alignment=image_text_alignment,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
-            pixel_values=pixel_values,
-            visual_attention_mask=visual_attention_mask,
             prefix=prefix,
         )
 
