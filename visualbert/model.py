@@ -6,16 +6,18 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.visual_bert = VisualBertModel(config)
-        self.prefix_length = prefix_length
         self.prefix_dim = config.hidden_size
-        self.prefix_proj = nn.Sequential(
-            nn.Linear(self.prefix_dim, self.prefix_dim),
-            nn.ReLU(),
-            nn.Linear(self.prefix_dim, self.prefix_length * 2 * config.num_hidden_layers * self.prefix_dim)
-        )
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.vocab_size)
         self.init_weights()
+
+    def initialize_prefix(self, prefix_length):
+        self.prefix_length = prefix_length
+        self.prefix_proj = nn.Sequential(
+            nn.Linear(self.prefix_dim, self.prefix_dim),
+            nn.ReLU(),
+            nn.Linear(self.prefix_dim, self.prefix_length * 2 * self.config.num_hidden_layers * self.prefix_dim)
+        )
 
     def get_prompt(self, batch_size):
         prefix = torch.randn(batch_size, self.prefix_dim).to(self.device)
