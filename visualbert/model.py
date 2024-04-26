@@ -6,7 +6,7 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.visual_bert = VisualBertModel(config)
-        self.prefix_length = None
+        self.prefix_length = prefix_length
         self.prefix_dim = config.hidden_size
         self.prefix_proj = nn.Sequential(
             nn.Linear(self.prefix_dim, self.prefix_dim),
