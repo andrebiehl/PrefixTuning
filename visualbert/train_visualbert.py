@@ -110,7 +110,8 @@ def main(args):
     # Load model
     config = VisualBertConfig.from_pretrained(args.model_name_or_path)
     config.output_hidden_states = True
-    model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path, config=config, prefix_length=args.prefix_length)
+    model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path, config=config)
+    model.initialize_prefix(args.prefix_length)
     model.to(device)
     print("Model loaded and prefix length set.")
 
