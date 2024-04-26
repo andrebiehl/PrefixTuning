@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from transformers import VisualBertModel, VisualBertConfig, BertTokenizer, AdamW, get_linear_schedule_with_warmup
 from PIL import Image
-from torchvision.transforms import ToTensor, Resize, Compose
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
 from model import VisualBERTCaptionGenerator
 from utils import calculate_bleu
@@ -30,6 +30,11 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def preprocess_image(image_path, transform):
+    image = Image.open(image_path).convert("RGB")
+    image = transform(image)
+    return image
+
 def get_visual_embeddings(images, device):
     transform = Compose([
         Resize((224, 224)),
@@ -45,11 +50,11 @@ def get_visual_embeddings(images, device):
     visual_embeds = torch.cat(visual_embeds, dim=0)
     return visual_embeds
 
-def preprocess_function(examples, tokenizer, device):
-    images = [Image.open(image_path).convert("RGB") for image_path, _ in examples]
+def preprocess_function(examples, tokenizer, transform, device):
+    images = [preprocess_image(image_path, transform) for image_path, _ in examples]
     captions = [random.choice(captions) for _, captions in examples]
     
-    visual_embeds = get_visual_embeddings(images, device)
+    visual_embeds = torch.stack(images).to(device)
     text_inputs = tokenizer(captions, padding="max_length", truncation=True, return_tensors="pt")
     
     inputs = {
@@ -81,13 +86,18 @@ def main(args):
     dev_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in dev_image_ids]
     test_dataset = [(os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
 
-    # Preprocess dataset
+        # Preprocess dataset
     tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path)
+    transform = Compose([
+        Resize((224, 224)),
+        ToTensor(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_dataset = [preprocess_function(example, tokenizer, device) for example in train_dataset]
-    dev_dataset = [preprocess_function(example, tokenizer, device) for example in dev_dataset]
-    test_dataset = [preprocess_function(example, tokenizer, device) for example in test_dataset]
+    train_dataset = [preprocess_function(example, tokenizer, transform, device) for example in train_dataset]
+    dev_dataset = [preprocess_function(example, tokenizer, transform, device) for example in dev_dataset]
+    test_dataset = [preprocess_function(example, tokenizer, transform, device) for example in test_dataset]
 
     # Load model
     config = VisualBertConfig.from_pretrained(args.model_name_or_path)
