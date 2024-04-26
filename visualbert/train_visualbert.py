@@ -65,6 +65,7 @@ def main(args):
     # Load model
     model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path)
     model.prefix_length = args.prefix_length
+    print("Model loaded and prefix length set.") 
 
     # Set up training
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
@@ -77,9 +78,11 @@ def main(args):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
+    print("Starting training...")
 
     # Training loop
     for epoch in range(args.num_train_epochs):
+        print(f"--- Epoch {epoch+1} ---")
         model.train()
         for batch in tqdm(train_dataloader, desc=f"Epoch {epoch}"):
             batch = {k: v.to(device) for k, v in batch.items()}
@@ -93,6 +96,7 @@ def main(args):
 
         # Evaluation
         model.eval()
+        print("Starting evaluation...")
         predictions = []
         references = []
         for batch in dev_dataloader:
@@ -106,6 +110,7 @@ def main(args):
 
         bleu_score = calculate_bleu(predictions, references)
         logger.info(f"Epoch {epoch}: BLEU score = {bleu_score}")
+        print("Training complete. Saving model...")
 
     # Save model
     output_dir = Path(args.output_dir)
