@@ -28,40 +28,16 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         self,
         input_ids=None,
         attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
         visual_embeds=None,
-        visual_attention_mask=None,
-        visual_token_type_ids=None,
-        image_text_alignment=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
         labels=None,
     ):
         batch_size = input_ids.shape[0]
         prefix_embeddings = self.get_prompt(batch_size)
     
-        visual_embeds = visual_embeds.squeeze(1)
-        visual_attention_mask = visual_attention_mask.squeeze(1)
-        visual_token_type_ids = visual_token_type_ids.squeeze(1)
-    
         outputs = self.visual_bert(
             input_ids,
             attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
             visual_embeds=visual_embeds,
-            visual_attention_mask=visual_attention_mask,
-            visual_token_type_ids=visual_token_type_ids,
-            image_text_alignment=image_text_alignment,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
         )
     
         sequence_output = outputs[0]
