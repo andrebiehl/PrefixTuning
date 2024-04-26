@@ -4,14 +4,13 @@ import os
 from pathlib import Path
 import random
 
-
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from datasets import load_dataset
-from transformers import VisualBertModel, VisualBertConfig, VisualBertFeatureExtractor, BertTokenizer, AdamW, get_linear_schedule_with_warmup
+from transformers import VisualBertModel, VisualBertConfig, BertTokenizer, AdamW, get_linear_schedule_with_warmup
 from PIL import Image
+from torchvision.transforms import ToTensor, Resize, Compose
 
 from model import VisualBERTCaptionGenerator
 from utils import calculate_bleu
@@ -31,17 +30,34 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def preprocess_function(examples):
+def get_visual_embeddings(images, device):
+    transform = Compose([
+        Resize((224, 224)),
+        ToTensor(),
+    ])
+    visual_embeds = []
+    for image in images:
+        image = transform(image)
+        image = image.unsqueeze(0).to(device)
+        with torch.no_grad():
+            visual_embed = model.visual_bert.visual_embedding(image)
+        visual_embeds.append(visual_embed)
+    visual_embeds = torch.cat(visual_embeds, dim=0)
+    return visual_embeds
+
+def preprocess_function(examples, tokenizer, device):
     images = [Image.open(image_path).convert("RGB") for image_path, _ in examples]
     captions = [random.choice(captions) for _, captions in examples]
     
-    visual_features = feature_extractor(images, return_tensors="pt")
-    text_features = tokenizer(captions, padding="max_length", truncation=True, return_tensors="pt")
+    visual_embeds = get_visual_embeddings(images, device)
+    text_inputs = tokenizer(captions, padding="max_length", truncation=True, return_tensors="pt")
     
     inputs = {
-        "input_ids": text_features["input_ids"],
-        "attention_mask": text_features["attention_mask"],
-        "pixel_values": visual_features.pixel_values,
+        "input_ids": text_inputs["input_ids"].to(device),
+        "attention_mask": text_inputs["attention_mask"].to(device),
+        "visual_embeds": visual_embeds,
+        "visual_attention_mask": torch.ones(visual_embeds.shape[:-1]).to(device),
+        "visual_token_type_ids": torch.ones(visual_embeds.shape[:-1], dtype=torch.long).to(device),
     }
     inputs["labels"] = inputs["input_ids"].clone()
     return inputs
@@ -67,17 +83,19 @@ def main(args):
 
     # Preprocess dataset
     tokenizer = BertTokenizer.from_pretrained(args.model_name_or_path)
-    feature_extractor = VisualBertFeatureExtractor.from_pretrained(args.model_name_or_path)
-    train_dataset = train_dataset.map(preprocess_function, batched=True, remove_columns=train_dataset.column_names)
-    dev_dataset = dev_dataset.map(preprocess_function, batched=True, remove_columns=dev_dataset.column_names)
-    test_dataset = test_dataset.map(preprocess_function, batched=True, remove_columns=test_dataset.column_names)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    train_dataset = [preprocess_function(example, tokenizer, device) for example in train_dataset]
+    dev_dataset = [preprocess_function(example, tokenizer, device) for example in dev_dataset]
+    test_dataset = [preprocess_function(example, tokenizer, device) for example in test_dataset]
 
     # Load model
     config = VisualBertConfig.from_pretrained(args.model_name_or_path)
-    config.prefix_length = args.prefix_length
-    model = VisualBERTCaptionGenerator(config)
+    config.output_hidden_states = True
+    model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path, config=config)
     model.prefix_length = args.prefix_length
-    print("Model loaded and prefix length set.") 
+    model.to(device)
+    print("Model loaded and prefix length set.")
 
     # Set up training
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
@@ -88,8 +106,6 @@ def main(args):
     total_steps = len(train_dataloader) * args.num_train_epochs
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
     print("Starting training...")
 
     # Training loop
@@ -97,9 +113,8 @@ def main(args):
         print(f"--- Epoch {epoch+1} ---")
         model.train()
         for batch in tqdm(train_dataloader, desc=f"Epoch {epoch}"):
-            batch = {k: v.to(device) for k, v in batch.items()}
             outputs = model(**batch)
-            loss = outputs.loss
+            loss = outputs['loss']
             loss.backward()
 
             optimizer.step()
@@ -112,11 +127,15 @@ def main(args):
         predictions = []
         references = []
         for batch in dev_dataloader:
-            batch = {k: v.to(device) for k, v in batch.items()}
             with torch.no_grad():
-                outputs = model.generate(pixel_values=batch["pixel_values"], max_length=50)
-            predicted_captions = processor.batch_decode(outputs, skip_special_tokens=True)
-            reference_captions = processor.batch_decode(batch["labels"], skip_special_tokens=True)
+                outputs = model.generate(input_ids=batch['input_ids'], 
+                                         attention_mask=batch['attention_mask'],
+                                         visual_embeds=batch['visual_embeds'],
+                                         visual_attention_mask=batch['visual_attention_mask'],
+                                         visual_token_type_ids=batch['visual_token_type_ids'],
+                                         max_length=50)
+            predicted_captions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            reference_captions = tokenizer.batch_decode(batch["labels"], skip_special_tokens=True)
             predictions.extend(predicted_captions)
             references.extend(reference_captions)
 
@@ -129,7 +148,6 @@ def main(args):
     output_dir.mkdir(exist_ok=True)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
-    feature_extractor.save_pretrained(output_dir)
 
 if __name__ == "__main__":
     args = parse_args()
