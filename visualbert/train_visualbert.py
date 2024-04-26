@@ -53,11 +53,12 @@ def get_visual_embeddings(images, device):
 def preprocess_function(examples, tokenizer, transform, device):
     for example in examples:
         print(example)
-    images = [preprocess_image(image_path, transform) for image_path, _ in examples]
-    captions = [random.choice(captions) for _, captions in examples]
+    image_path, captions = example  # Unpack the tuple
+    image = preprocess_image(image_path, transform)  # Process the image
+    caption = random.choice(captions)  # Choose one of the captions at random
     
-    visual_embeds = torch.stack(images).to(device)
-    text_inputs = tokenizer(captions, padding="max_length", truncation=True, return_tensors="pt")
+    visual_embeds = torch.stack(image).to(device)
+    text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
     
     inputs = {
         "input_ids": text_inputs["input_ids"].to(device),
