@@ -65,15 +65,15 @@ def preprocess_function(example, tokenizer, transform, device):
     visual_embeds = image.unsqueeze(0).to(device)
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
 
-    input_ids = text_inputs["input_ids"].squeeze(0)
-    attention_mask = text_inputs["attention_mask"].squeeze(0)
+    input_ids = text_inputs["input_ids"].to(device)
+    attention_mask = text_inputs["attention_mask"].to(device)
 
     return {
         "input_ids": input_ids,
         "attention_mask": attention_mask,
         "visual_embeds": visual_embeds,
-        "visual_attention_mask": torch.ones(visual_embeds.shape[:-1]),
-        "visual_token_type_ids": torch.ones(visual_embeds.shape[:-1], dtype=torch.long),
+        "visual_attention_mask": torch.ones(visual_embeds.shape[:-1]).to(device),
+        "visual_token_type_ids": torch.ones(visual_embeds.shape[:-1], dtype=torch.long).to(device),
         "labels": input_ids.clone(),
     }
 
@@ -133,10 +133,11 @@ def main(args):
         print(f"--- Epoch {epoch+1} ---")
         model.train()
         for batch in tqdm(train_dataloader, desc=f"Epoch {epoch}"):
+            batch = {k: v.to(device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs['loss']
             loss.backward()
-
+    
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
