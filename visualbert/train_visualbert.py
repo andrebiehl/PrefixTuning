@@ -58,22 +58,24 @@ def get_visual_embeddings(images, device):
     return visual_embeds
 
 def preprocess_function(example, tokenizer, transform, device):
-    image_path, captions_list = example  # Unpack the tuple into image_path and captions_list
-    image = preprocess_image(image_path, transform)  # Process the image
-    caption = random.choice(captions_list)  # Choose one of the captions at random
-    
+    image_path, captions_list = example
+    image = preprocess_image(image_path, transform)
+    caption = random.choice(captions_list)
+
     visual_embeds = image.unsqueeze(0).to(device)
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
-    
-    inputs = {
-        "input_ids": text_inputs["input_ids"].to(device),
-        "attention_mask": text_inputs["attention_mask"].to(device),
+
+    input_ids = text_inputs["input_ids"].squeeze(0)
+    attention_mask = text_inputs["attention_mask"].squeeze(0)
+
+    return {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
         "visual_embeds": visual_embeds,
-        "visual_attention_mask": torch.ones(visual_embeds.shape[:-1]).to(device),
-        "visual_token_type_ids": torch.ones(visual_embeds.shape[:-1], dtype=torch.long).to(device),
+        "visual_attention_mask": torch.ones(visual_embeds.shape[:-1]),
+        "visual_token_type_ids": torch.ones(visual_embeds.shape[:-1], dtype=torch.long),
+        "labels": input_ids.clone(),
     }
-    inputs["labels"] = inputs["input_ids"].clone()
-    return inputs
 
 def main(args):
     # Load dataset
