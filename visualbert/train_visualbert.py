@@ -48,6 +48,7 @@ def main(args):
     with open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr8k.token.txt"), "r") as f:
         for line in f:
             image_id, caption = line.strip().split("\t")
+            image_id = image_id.split("#")[0]
             if image_id not in captions:
                 captions[image_id] = []
             captions[image_id].append(caption)
