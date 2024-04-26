@@ -62,19 +62,13 @@ def preprocess_function(example, tokenizer, transform, device):
     image = preprocess_image(image_path, transform)
     caption = random.choice(captions_list)
 
-    visual_embeds = image.unsqueeze(0).to(device)
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
 
-    input_ids = text_inputs["input_ids"].to(device)
-    attention_mask = text_inputs["attention_mask"].to(device)
-
     return {
-        "input_ids": input_ids,
-        "attention_mask": attention_mask,
-        "visual_embeds": visual_embeds,
-        "visual_attention_mask": torch.ones(visual_embeds.shape[:-1]).to(device),
-        "visual_token_type_ids": torch.ones(visual_embeds.shape[:-1], dtype=torch.long).to(device),
-        "labels": input_ids.clone(),
+        "input_ids": text_inputs["input_ids"].squeeze(),
+        "attention_mask": text_inputs["attention_mask"].squeeze(),
+        "visual_embeds": image.unsqueeze(0),
+        "labels": text_inputs["input_ids"].squeeze().clone(),
     }
 
 def main(args):
