@@ -62,7 +62,7 @@ def preprocess_function(example, tokenizer, transform, device):
     image = preprocess_image(image_path, transform)  # Process the image
     caption = random.choice(captions_list)  # Choose one of the captions at random
     
-    visual_embeds = torch.stack(image).to(device)
+    visual_embeds = image.unsqueeze(0).to(device)
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
     
     inputs = {
