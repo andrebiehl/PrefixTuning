@@ -51,11 +51,9 @@ def get_visual_embeddings(images, device):
     return visual_embeds
 
 def preprocess_function(examples, tokenizer, transform, device):
-    for example in examples:
-        print(example)
-    image_path, captions = example  # Unpack the tuple
+    image_path, captions_list = example  # Unpack the tuple into image_path and captions_list
     image = preprocess_image(image_path, transform)  # Process the image
-    caption = random.choice(captions)  # Choose one of the captions at random
+    caption = random.choice(captions_list)  # Choose one of the captions at random
     
     visual_embeds = torch.stack(image).to(device)
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
@@ -98,7 +96,7 @@ def main(args):
     ])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_dataset = [preprocess_function(example, tokenizer, transform, device) for example in train_dataset]
+    train_dataset = [preprocess_function((os.path.join(args.data_dir, "Flickr8k_Dataset", image_id), captions[image_id]), tokenizer, transform, device) for image_id in train_image_ids]
     dev_dataset = [preprocess_function(example, tokenizer, transform, device) for example in dev_dataset]
     test_dataset = [preprocess_function(example, tokenizer, transform, device) for example in test_dataset]
 
