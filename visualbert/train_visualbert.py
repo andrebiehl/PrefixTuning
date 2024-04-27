@@ -99,16 +99,23 @@ def main(args):
     dev_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.devImages.txt")).readlines()]
     test_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.testImages.txt")).readlines()]
 
-    captions = {}
-    with open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr8k.token.txt"), "r") as f:
-        for line in f:
-            image_id, caption = line.strip().split("\t")
-            image_id = image_id.split("#")[0]
-            if image_id not in captions:
-                captions[image_id] = []
-            captions[image_id].append(caption)
+    # Initialize tokenizer and device first
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+    # Load model
+    config = VisualBertConfig.from_pretrained(args.model_name_or_path)
+    config.output_hidden_states = True
+    model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path, config=config)
+    model.to(device)
+    print("Model loaded and prefix length set.")
+
+    # Prepare datasets
     print("Preparing datasets...")
+    train_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in train_image_ids]
+    dev_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in dev_image_ids]
+    test_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
+
     # Debugging: Start preprocessing and check the process
     for i, image_id in enumerate(train_image_ids[:5]):  # Limit to first 5 for initial testing
         print(f"Processing {i+1}/{len(train_image_ids)}: Image ID {image_id}")
