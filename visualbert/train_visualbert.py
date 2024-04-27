@@ -93,6 +93,7 @@ def preprocess_function(example, tokenizer, device):
         "labels": text_inputs["input_ids"].squeeze().clone(),
     }
 def main(args):
+    print("Loading dataset identifiers...")
     # Load dataset
     train_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.trainImages.txt")).readlines()]
     dev_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.devImages.txt")).readlines()]
@@ -107,32 +108,31 @@ def main(args):
                 captions[image_id] = []
             captions[image_id].append(caption)
 
+    print("Preparing datasets...")
+    # Debugging: Start preprocessing and check the process
+    for i, image_id in enumerate(train_image_ids[:5]):  # Limit to first 5 for initial testing
+        print(f"Processing {i+1}/{len(train_image_ids)}: Image ID {image_id}")
+        example = (os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id])
+        preprocess_function(example, tokenizer, device)
+    print("Preprocessing completed.")
+
+    # Actual dataset preparation
     train_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in train_image_ids]
     dev_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in dev_image_ids]
     test_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
 
-        # Preprocess dataset
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    transform = Compose([
-        Resize((224, 224)),
-        ToTensor(),
-        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    train_dataset = [preprocess_function((os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]), tokenizer, device) for image_id in train_image_ids]
-    dev_dataset = [preprocess_function(example, tokenizer, device) for example in dev_dataset]
-    test_dataset = [preprocess_function(example, tokenizer, device) for example in test_dataset]
+    device = torch.device("cuda" if torch.cuda.is available() else "cpu")
 
     # Load model
     config = VisualBertConfig.from_pretrained(args.model_name_or_path)
     config.output_hidden_states = True
     model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path, config=config)
-    model.initialize_prefix(args.prefix_length)
     model.to(device)
     print("Model loaded and prefix length set.")
 
     # Set up training
+    print("Starting training setup...")
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
     dev_dataloader = DataLoader(dev_dataset, batch_size=args.eval_batch_size)
     test_dataloader = DataLoader(test_dataset, batch_size=args.eval_batch_size)
@@ -140,8 +140,6 @@ def main(args):
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     total_steps = len(train_dataloader) * args.num_train_epochs
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
-
-    print("Starting training...")
 
     # Training loop
     for epoch in range(args.num_train_epochs):
@@ -152,13 +150,12 @@ def main(args):
             outputs = model(**batch)
             loss = outputs['loss']
             loss.backward()
-    
+
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
 
         # Evaluation
-        model.eval()
         print("Starting evaluation...")
         predictions = []
         references = []
@@ -167,8 +164,7 @@ def main(args):
                 outputs = model.generate(input_ids=batch['input_ids'], 
                                          attention_mask=batch['attention_mask'],
                                          visual_embeds=batch['visual_embeds'],
-                                         visual_attention_mask=batch['visual_attention_mask'],
-                                         visual_token_type_ids=batch['visual_token_type_ids'],
+                                         visual_attention_maskbatch['visual_token_type_ids'],
                                          max_length=50)
             predicted_captions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
             reference_captions = tokenizer.batch_decode(batch["labels"], skip_special_tokens=True)
