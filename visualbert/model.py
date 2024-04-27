@@ -34,10 +34,12 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         batch_size = input_ids.shape[0]
         prefix_embeddings = self.get_prompt(batch_size)
     
-        outputs = self.visual_bert(
-            input_ids,
-            attention_mask=attention_mask,
-            visual_embeds=visual_embeds,
+        outputs = model(
+            input_ids=batch["input_ids"],
+            attention_mask=batch["attention_mask"],
+            visual_embeds=batch["visual_embeds"],
+            visual_attention_mask=batch["visual_attention_mask"],
+            labels=batch["labels"],
         )
     
         sequence_output = outputs[0]
