@@ -29,27 +29,23 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         input_ids=None,
         attention_mask=None,
         visual_embeds=None,
+        visual_attention_mask=None,
         labels=None,
     ):
         batch_size = input_ids.shape[0]
         prefix_embeddings = self.get_prompt(batch_size)
-    
-        outputs = model(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-            visual_embeds=batch["visual_embeds"],
-            visual_attention_mask=batch["visual_attention_mask"],
-            labels=batch["labels"],
+        outputs = self.visual_bert(
+            input_ids,
+            attention_mask=attention_mask,
+            visual_embeds=visual_embeds,
+            visual_attention_mask=visual_attention_mask,
         )
-    
         sequence_output = outputs[0]
         sequence_output = torch.cat((prefix_embeddings, sequence_output), dim=1)
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
-    
         loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, self.config.vocab_size), labels.view(-1))
-    
         return {'loss': loss, 'logits': logits}
