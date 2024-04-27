@@ -64,7 +64,7 @@ def preprocess_function(example, tokenizer, transform, device):
 
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
 
-    visual_attention_mask = torch.ones(1, image.shape[-2], image.shape[-1])
+    visual_attention_mask = torch.ones(1, 1, image.shape[-2], image.shape[-1])
 
     return {
         "input_ids": text_inputs["input_ids"].squeeze(),
