@@ -119,9 +119,9 @@ def main(args):
     ])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_dataset = [preprocess_function((os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]), tokenizer, transform, device) for image_id in train_image_ids]
-    dev_dataset = [preprocess_function(example, tokenizer, transform, device) for example in dev_dataset]
-    test_dataset = [preprocess_function(example, tokenizer, transform, device) for example in test_dataset]
+    train_dataset = [preprocess_function((os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]), tokenizer, device) for image_id in train_image_ids]
+    dev_dataset = [preprocess_function(example, tokenizer, device) for example in dev_dataset]
+    test_dataset = [preprocess_function(example, tokenizer, device) for example in test_dataset]
 
     # Load model
     config = VisualBertConfig.from_pretrained(args.model_name_or_path)
