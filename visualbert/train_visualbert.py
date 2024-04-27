@@ -64,12 +64,14 @@ def preprocess_function(example, tokenizer, transform, device):
 
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
 
-    visual_attention_mask = torch.ones(1, image.shape[-2] * image.shape[-1])
+    # Reshape the visual embeddings to (batch_size, num_visual_features, visual_embedding_dim)
+    visual_embeds = image.unsqueeze(0).view(1, -1, image.shape[-1])
+    visual_attention_mask = torch.ones(1, visual_embeds.shape[1])
 
     return {
         "input_ids": text_inputs["input_ids"].squeeze(),
         "attention_mask": text_inputs["attention_mask"].squeeze(),
-        "visual_embeds": image.unsqueeze(0),
+        "visual_embeds": visual_embeds,
         "visual_attention_mask": visual_attention_mask,
         "labels": text_inputs["input_ids"].squeeze().clone(),
     }
