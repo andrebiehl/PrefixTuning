@@ -7,6 +7,8 @@ import random
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from torchvision.models import resnet50
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 
 from transformers import VisualBertModel, VisualBertConfig, BertTokenizer, AdamW, get_linear_schedule_with_warmup
 from PIL import Image
@@ -57,16 +59,30 @@ def get_visual_embeddings(images, device):
     visual_embeds = torch.cat(visual_embeds, dim=0)
     return visual_embeds
 
-def preprocess_function(example, tokenizer, transform, device):
+def preprocess_function(example, tokenizer, device):
     image_path, captions_list = example
-    image = preprocess_image(image_path, transform)
     caption = random.choice(captions_list)
+
+    # Load and preprocess the image
+    transform = Compose([
+        Resize((224, 224)),
+        CenterCrop(224),
+        ToTensor(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    image = Image.open(image_path).convert("RGB")
+    image = transform(image).unsqueeze(0).to(device)
+
+    # Extract visual features using a pre-trained model
+    model = resnet50(pretrained=True)
+    model.fc = nn.Identity()
+    model.to(device)
+    with torch.no_grad():
+        visual_embeds = model(image)
 
     text_inputs = tokenizer(caption, padding="max_length", truncation=True, return_tensors="pt")
 
-    # Reshape the visual embeddings to (batch_size, num_visual_features, visual_embedding_dim)
-    visual_embeds = image.unsqueeze(0).view(1, -1, image.shape[-1])
-    visual_attention_mask = torch.ones(1, visual_embeds.shape[1])
+    visual_attention_mask = torch.ones(1, visual_embeds.shape[1]).to(device)
 
     return {
         "input_ids": text_inputs["input_ids"].squeeze(),
