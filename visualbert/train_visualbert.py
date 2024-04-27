@@ -122,7 +122,7 @@ def main(args):
     test_dataset = [(os.path.join(args.data_dir, "Flicker8k_Dataset", image_id), captions[image_id]) for image_id in test_image_ids]
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    device = torch.device("cuda" if torch.cuda.is available() else "cpu")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # Load model
     config = VisualBertConfig.from_pretrained(args.model_name_or_path)
@@ -164,7 +164,7 @@ def main(args):
                 outputs = model.generate(input_ids=batch['input_ids'], 
                                          attention_mask=batch['attention_mask'],
                                          visual_embeds=batch['visual_embeds'],
-                                         visual_attention_maskbatch['visual_token_type_ids'],
+                                         visual_attention_mask=batch['visual_token_type_ids'],
                                          max_length=50)
             predicted_captions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
             reference_captions = tokenizer.batch_decode(batch["labels"], skip_special_tokens=True)
