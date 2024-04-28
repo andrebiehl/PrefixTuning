@@ -94,12 +94,13 @@ def preprocess_function(example, tokenizer, device):
     }
 def main(args):
     print("Loading dataset identifiers...")
-    # Load dataset
+
+    # Load dataset identifiers
     train_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.trainImages.txt")).readlines()]
     dev_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.devImages.txt")).readlines()]
     test_image_ids = [line.strip() for line in open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr_8k.testImages.txt")).readlines()]
 
-    # Initialize tokenizer and device first
+    # Initialize tokenizer and device
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -109,6 +110,16 @@ def main(args):
     model = VisualBERTCaptionGenerator.from_pretrained(args.model_name_or_path, config=config)
     model.to(device)
     print("Model loaded and prefix length set.")
+
+    # Load and parse captions
+    captions = {}
+    with open(os.path.join(args.data_dir, "Flickr8k_text", "Flickr8k.token.txt"), "r") as f:
+        for line in f:
+            image_id, caption = line.strip().split("\t")
+            image_id = image_id.split("#")[0]
+            if image_id not in captions:
+                captions[image_id] = []
+            captions[image_id].append(caption)
 
     # Prepare datasets
     print("Preparing datasets...")
