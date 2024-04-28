@@ -11,6 +11,8 @@ from tqdm import tqdm
 from torchvision.models import resnet50
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 
+from functools import partial
+
 from transformers import VisualBertModel, VisualBertConfig, BertTokenizer, AdamW, get_linear_schedule_with_warmup
 from PIL import Image
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
@@ -92,7 +94,7 @@ def preprocess_function(example, tokenizer, device):
         "visual_attention_mask": visual_attention_mask,
         "labels": text_inputs["input_ids"].squeeze().clone(),
     }
-def collate_fn(batch):
+def collate_fn(batch, tokenizer, device):
     input_ids = []
     attention_masks = []
     visual_embeds = []
@@ -174,7 +176,7 @@ def main(args):
 
     # Set up training
     print("Starting training setup...")
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=partial(collate_fn, tokenizer=tokenizer, device=device))
     dev_dataloader = DataLoader(dev_dataset, batch_size=args.eval_batch_size)
     test_dataloader = DataLoader(test_dataset, batch_size=args.eval_batch_size)
 
