@@ -9,6 +9,8 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
         self.prefix_dim = config.hidden_size
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.vocab_size)
+        self.prefix_length = None
+        self.prefix_embeddings = None
         self.init_weights()
 
     def initialize_prefix(self, prefix_length):
@@ -19,8 +21,10 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
             nn.ReLU(),
             nn.Linear(self.prefix_dim, self.prefix_length * 2 * self.config.num_hidden_layers * self.prefix_dim)
         )
-    
+
     def get_prompt(self, batch_size):
+        if self.prefix_embeddings is None:
+            raise ValueError("prefix_embeddings is not initialized. Call initialize_prefix first.")
         prefix_embeddings = self.prefix_embeddings.unsqueeze(0).expand(batch_size, -1, -1)
         return self.prefix_proj(prefix_embeddings)
 
@@ -34,11 +38,9 @@ class VisualBERTCaptionGenerator(VisualBertPreTrainedModel):
     ):
         batch_size = input_ids.shape[0]
         prefix_embeddings = self.get_prompt(batch_size)
-        
         if visual_attention_mask is not None:
             # Reshape visual_attention_mask to match the shape of attention_mask
             visual_attention_mask = visual_attention_mask.view(batch_size, -1)
-        
         outputs = self.visual_bert(
             input_ids,
             attention_mask=attention_mask,
