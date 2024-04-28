@@ -92,6 +92,29 @@ def preprocess_function(example, tokenizer, device):
         "visual_attention_mask": visual_attention_mask,
         "labels": text_inputs["input_ids"].squeeze().clone(),
     }
+def collate_fn(batch):
+    input_ids = []
+    attention_masks = []
+    visual_embeds = []
+    visual_attention_masks = []
+    labels = []
+
+    for item in batch:
+        processed_item = preprocess_function(item, tokenizer, device)
+        input_ids.append(processed_item["input_ids"])
+        attention_masks.append(processed_item["attention_mask"])
+        visual_embeds.append(processed_item["visual_embeds"])
+        visual_attention_masks.append(processed_item["visual_attention_mask"])
+        labels.append(processed_item["labels"])
+
+    return {
+        "input_ids": torch.stack(input_ids),
+        "attention_mask": torch.stack(attention_masks),
+        "visual_embeds": torch.stack(visual_embeds),
+        "visual_attention_mask": torch.stack(visual_attention_masks),
+        "labels": torch.stack(labels),
+    }
+    
 def main(args):
     print("Loading dataset identifiers...")
 
@@ -151,7 +174,7 @@ def main(args):
 
     # Set up training
     print("Starting training setup...")
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=collate_fn)
     dev_dataloader = DataLoader(dev_dataset, batch_size=args.eval_batch_size)
     test_dataloader = DataLoader(test_dataset, batch_size=args.eval_batch_size)
 
